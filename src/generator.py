@@ -81,7 +81,7 @@ class ArtGenerator:
         elif self.device == "cuda":
             pipe.enable_model_cpu_offload()
 
-        print("--- Generando Imagen (Paciencia, puede tardar un poco más en float32) ---")
+        print("--- Generando Imagen ---")
         
         try:
             image = pipe(
