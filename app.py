@@ -1,87 +1,121 @@
 import streamlit as st
 from PIL import Image
 import random
+from io import BytesIO # Necesario para la descarga sin guardar en disco
 from src.styles import ESTILOS_ARTISTICOS
 from src.generator import ArtGenerator
 
-# Configuración de la página
+# --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
-    page_title="AI Art Transformer",
+    page_title="IA Art Studio",
     page_icon="🎨",
     layout="wide"
 )
 
-st.title("🎨 AI Art Transformer")
-st.markdown("Sube una foto y transformala en una obra de arte usando **BLIP + SDXL**.")
+# Estilos CSS personalizados para mejorar la apariencia (opcional)
+st.markdown("""
+<style>
+    .stButton>button {
+        width: 100%;
+        font-weight: bold;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# Sidebar
-st.sidebar.header("Configuración")
-modo_seleccion = st.sidebar.radio("Selección de Estilo", ["Aleatorio", "Manual"])
+# --- TÍTULO ---
+st.title("🎨 IA Art Studio: De Foto a Obra de Arte")
+st.markdown("Sube una imagen, elige un estilo (o un pintor famoso) y deja que la IA la redibuje.")
+
+# --- SIDEBAR: CONFIGURACIÓN ---
+st.sidebar.header("🎛️ Panel de Control")
+
+# 1. Subida de archivo
+uploaded_file = st.sidebar.file_uploader("1. Sube tu imagen", type=["jpg", "jpeg", "png"])
+
+# 2. Selección de Estilo
+st.sidebar.markdown("---")
+modo_seleccion = st.sidebar.radio("2. Modo de Estilo", ["Aleatorio 🎲", "Selección Manual 🖐️"])
 
 estilo_seleccionado = None
 nombre_estilo_display = "Aleatorio"
 
-if modo_seleccion == "Manual":
-    nombre_estilo_display = st.sidebar.selectbox("Elige un estilo", list(ESTILOS_ARTISTICOS.keys()))
+if modo_seleccion == "Selección Manual 🖐️":
+    # Ordenamos los estilos alfabéticamente para facilitar la búsqueda
+    lista_estilos = sorted(list(ESTILOS_ARTISTICOS.keys()))
+    nombre_estilo_display = st.sidebar.selectbox("Elige un estilo o artista:", lista_estilos)
     estilo_seleccionado = (nombre_estilo_display, ESTILOS_ARTISTICOS[nombre_estilo_display])
 
-uploaded_file = st.sidebar.file_uploader("Sube tu imagen (JPG/PNG)", type=["jpg", "jpeg", "png"])
-
-# Layout principal
+# --- ÁREA PRINCIPAL ---
 col1, col2 = st.columns(2)
 
+# Variable para guardar la imagen en el estado de la sesión (para que no desaparezca al tocar algo)
+if "imagen_generada" not in st.session_state:
+    st.session_state.imagen_generada = None
+if "nombre_estilo_generado" not in st.session_state:
+    st.session_state.nombre_estilo_generado = ""
+
 if uploaded_file is not None:
-    # Mostrar imagen original
+    # Cargar y mostrar imagen original
     image_input = Image.open(uploaded_file).convert('RGB')
     
     with col1:
-        st.subheader("Imagen Original")
+        st.subheader("📸 Imagen Original")
         st.image(image_input, use_container_width=True)
 
-    # Botón de generar
-    if st.sidebar.button("✨ Generar Arte"):
+    # Botón de acción
+    st.sidebar.markdown("---")
+    if st.sidebar.button("✨ GENERAR ARTE ✨", type="primary"):
         generator = ArtGenerator()
         
-        with st.status("Analizando imagen con IA...", expanded=True) as status:
-            # Paso 1: Captioning
-            st.write("🧠 BLIP: Entendiendo el contenido de la imagen...")
-            descripcion_base = generator.generar_caption(image_input)
-            st.write(f"📝 Descripción base detectada: *{descripcion_base}*")
+        # Barra de progreso y status
+        with st.status("👩‍🎨 La IA está trabajando...", expanded=True) as status:
             
-            # Paso 2: Selección de Estilo
-            if modo_seleccion == "Aleatorio":
+            # Paso 1: Análisis (BLIP)
+            st.write("👁️ Analizando composición de la imagen...")
+            descripcion_base = generator.generar_caption(image_input)
+            st.write(f"📝 Descripción detectada: *{descripcion_base}*")
+            
+            # Paso 2: Configurar Prompt
+            if modo_seleccion == "Aleatorio 🎲":
                 nombre_estilo, modificadores = random.choice(list(ESTILOS_ARTISTICOS.items()))
             else:
                 nombre_estilo, modificadores = estilo_seleccionado
             
             prompt_final = f"{descripcion_base}{modificadores}"
-            st.write(f"🎨 Estilo aplicado: **{nombre_estilo}**")
+            st.session_state.nombre_estilo_generado = nombre_estilo
             
-            # Paso 3: Generación
-            st.write("🖌️ SDXL: Pintando la nueva imagen (esto puede tardar unos segundos)...")
+            # Paso 3: Generación (SDXL)
+            st.write(f"🎨 Pintando al estilo: **{nombre_estilo}**...")
             imagen_resultado = generator.generar_imagen(prompt_final)
             
-            status.update(label="¡Arte Generado!", state="complete", expanded=False)
-
-        # Mostrar Resultado
-        with col2:
-            st.subheader(f"Resultado: {nombre_estilo}")
-            st.image(imagen_resultado, use_container_width=True)
+            # Guardar en sesión
+            st.session_state.imagen_generada = imagen_resultado
             
-            # Botón de descarga
-            # Guardar en buffer para descargar
-            from io import BytesIO
+            status.update(label="¡Obra terminada!", state="complete", expanded=False)
+
+    # --- MOSTRAR RESULTADO Y DESCARGA ---
+    if st.session_state.imagen_generada is not None:
+        with col2:
+            st.subheader(f"🎨 Resultado: {st.session_state.nombre_estilo_generado}")
+            st.image(st.session_state.imagen_generada, use_container_width=True)
+            
+            # --- LÓGICA DE DESCARGA ---
+            # Convertimos la imagen de PIL a Bytes en memoria
             buf = BytesIO()
-            imagen_resultado.save(buf, format="PNG")
+            st.session_state.imagen_generada.save(buf, format="PNG")
             byte_im = buf.getvalue()
             
+            # Botón de descarga
             st.download_button(
-                label="Descargar Obra de Arte",
+                label="⬇️ Descargar Obra de Arte (HD)",
                 data=byte_im,
-                file_name="arte_generado.png",
+                file_name=f"arte_{st.session_state.nombre_estilo_generado.replace(' ', '_')}.png",
                 mime="image/png"
             )
 
 else:
+    # Mensaje de bienvenida cuando no hay imagen
     with col1:
-        st.info("👈 Sube una imagen en el menú lateral para comenzar.")
+        st.info("👈 Para empezar, sube una imagen en el menú de la izquierda.")
+    with col2:
+        st.empty()
