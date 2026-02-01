@@ -24,8 +24,8 @@ El flujo de trabajo combina dos modelos potentes:
 
 1.  **Clonar el repositorio:**
     ```bash
-    git clone [https://github.com/tu-usuario/ai-art-transformer.git](https://github.com/tu-usuario/ai-art-transformer.git)
-    cd ai-art-transformer
+    git clone [https://github.com/brunoestevecaste/art-generator-app.git](https://github.com/brunoestevecaste/art-generator-app.git)
+    cd art-generator-app
     ```
 
 2.  **Instalar dependencias:**
