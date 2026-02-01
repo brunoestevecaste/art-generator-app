@@ -1,0 +1,32 @@
+# Archivos de sistema (Mac/Windows/Linux)
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entornos Virtuales (¡Muy importante no subir esto!)
+venv/
+env/
+.env
+.venv
+
+# IDEs
+.vscode/
+.idea/
+
+# Streamlit
+.streamlit/
+
+# Archivos de datos o modelos grandes (si se descargaran en local)
+*.safetensors
+*.ckpt
+*.pt
+*.bin
+# (Nota: HuggingFace suele guardar en ~/.cache, pero por si acaso descargas algo aquí)
+
+# Logs
+*.log
